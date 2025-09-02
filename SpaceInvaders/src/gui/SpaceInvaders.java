@@ -1,9 +1,10 @@
-// SpaceInvaders.java
 package gui;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import javax.sound.sampled.*;
+import java.io.*;
 
 public class SpaceInvaders extends JPanel implements ActionListener, KeyListener {
 
@@ -33,8 +34,46 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
         timer.start();
 
         fondo = new ImageIcon(getClass().getResource("/media/fondito.jpg")).getImage();
-        jugador = jugador = new Jugador(375, 700, "/media/jugador.png");
+        jugador = new Jugador(375, 700, "/media/jugador.png");
     }
+
+    // ------------------ SONIDO ------------------
+    public void reproducirSonido(String ruta) {
+        new Thread(() -> {
+            try (InputStream is = getClass().getResourceAsStream(ruta)) {
+                if (is == null) return;
+                BufferedInputStream bis = new BufferedInputStream(is);
+                AudioInputStream ais = AudioSystem.getAudioInputStream(bis);
+
+                AudioFormat baseFormat = ais.getFormat();
+                AudioFormat decodedFormat = new AudioFormat(
+                        AudioFormat.Encoding.PCM_SIGNED,
+                        baseFormat.getSampleRate(),
+                        16,
+                        baseFormat.getChannels(),
+                        baseFormat.getChannels() * 2,
+                        baseFormat.getSampleRate(),
+                        false
+                );
+
+                try (AudioInputStream dais = AudioSystem.getAudioInputStream(decodedFormat, ais)) {
+                    DataLine.Info info = new DataLine.Info(SourceDataLine.class, decodedFormat);
+                    try (SourceDataLine line = (SourceDataLine) AudioSystem.getLine(info)) {
+                        line.open(decodedFormat);
+                        line.start();
+                        byte[] buffer = new byte[4096];
+                        int bytesRead;
+                        while ((bytesRead = dais.read(buffer)) != -1)
+                            line.write(buffer, 0, bytesRead);
+                        line.drain();
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+    // ---------------------------------------------
 
     @Override
     public void paintComponent(Graphics g) {
@@ -64,7 +103,8 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
             for (int i = 0; i < cantidadBalasEnemigas; i++)
                 if (balasEnemigas[i] != null) balasEnemigas[i].dibujar(g);
 
-            for (Enemigo e : enemigos) if (e != null) e.dibujar(g);
+            if (enemigos != null)
+                for (Enemigo e : enemigos) if (e != null) e.dibujar(g);
 
             if (jefe != null) jefe.dibujar(g);
 
@@ -97,18 +137,21 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
         repaint();
     }
 
+    // ------------------- MOVIMIENTOS -------------------
     private void moverEnemigos() {
         boolean rebote = false;
-        for (Enemigo e : enemigos) {
-            if (e != null && e.getTipo().startsWith("movil")) {
-                e.setX(e.getX() + velocidadMovil * direccionBloque);
-                if (e.getX() <= 0 || e.getX() + e.getAncho() >= getWidth()) rebote = true;
+        if (enemigos != null) {
+            for (Enemigo e : enemigos) {
+                if (e != null && e.getTipo().startsWith("movil")) {
+                    e.setX(e.getX() + velocidadMovil * direccionBloque);
+                    if (e.getX() <= 0 || e.getX() + e.getAncho() >= getWidth()) rebote = true;
+                }
             }
-        }
-        if (rebote) {
-            direccionBloque *= -1;
-            for (Enemigo e : enemigos)
-                if (e != null && e.getTipo().startsWith("movil")) e.setY(e.getY() + 20);
+            if (rebote) {
+                direccionBloque *= -1;
+                for (Enemigo e : enemigos)
+                    if (e != null && e.getTipo().startsWith("movil")) e.setY(e.getY() + 20);
+            }
         }
     }
 
@@ -125,19 +168,22 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
     private void disparoEnemigos() {
         contadorDisparoEnemigos++;
         if (contadorDisparoEnemigos >= 50) {
-            for (Enemigo e : enemigos) {
-                if (e != null && e.estaVivo() && e.getTipo().startsWith("disparo"))
-                    dispararEnemigo(e.getX() + e.getAncho()/2, e.getY() + e.getAlto());
-            }
+            if (enemigos != null)
+                for (Enemigo e : enemigos) {
+                    if (e != null && e.estaVivo() && e.getTipo().startsWith("disparo"))
+                        dispararEnemigo(e.getX() + e.getAncho()/2, e.getY() + e.getAlto());
+                }
             if (jefe != null && jefe.estaVivo())
                 dispararEnemigo(jefe.getX() + jefe.getAncho()/2, jefe.getY() + jefe.getAlto());
             contadorDisparoEnemigos = 0;
         }
     }
+    // ----------------------------------------------------
 
     private void dispararJugador() {
         if (cantidadBalas < balas.length)
             balas[cantidadBalas++] = new Bala(jugador.getX() + jugador.getAncho()/2 - 4, jugador.getY() - 10);
+        reproducirSonido("/media/disparo.wav"); // sonido disparo jugador
     }
 
     private void dispararEnemigo(int x, int y) {
@@ -146,23 +192,23 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
     }
 
     private void colisiones() {
-        // Balas jugador vs enemigos y jefe
         for (int i = 0; i < cantidadBalas; i++) {
             Bala bala = balas[i];
             if (bala != null && bala.estaActiva()) {
-                for (Enemigo enemigo : enemigos) {
-                    if (enemigo != null && enemigo.estaVivo() && bala.colisiona(enemigo)) {
-                        enemigo.recibirDano(1);
-                        bala.setActiva(false);
-                        if (!enemigo.estaVivo()) puntaje += enemigo.getPuntos();
+                if (enemigos != null)
+                    for (Enemigo enemigo : enemigos) {
+                        if (enemigo != null && enemigo.estaVivo() && bala.colisiona(enemigo)) {
+                            enemigo.recibirDano(1);
+                            bala.setActiva(false);
+                            if (!enemigo.estaVivo()) puntaje += enemigo.getPuntos();
+                        }
                     }
-                }
+
                 if (jefe != null && jefe.estaVivo() && bala.colisiona(jefe)) {
                     jefe.recibirDano(1);
                     bala.setActiva(false);
                 }
 
-                // Aquí verificamos si el jefe ya murió y terminó de explotar
                 if (jefe != null && !jefe.estaVivo() && !jefe.isExplotando()) {
                     puntaje += jefe.getPuntos();
                     youWin = true;
@@ -175,43 +221,44 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
                     timerYOUWIN.setRepeats(false);
                     timerYOUWIN.start();
                 }
-
             }
         }
 
-        // Balas enemigas vs jugador
         for (int i = 0; i < cantidadBalasEnemigas; i++) {
             BalaEnemiga bala = balasEnemigas[i];
             if (bala != null && bala.estaActiva() && jugador.estaVivo() && !jugador.estaInvulnerable() && bala.colisiona(jugador)) {
                 bala.setActiva(false);
                 jugador.perderVida();
+                reproducirSonido("/media/daño.wav"); // sonido daño jugador
             }
         }
     }
 
     private void moverKamikaze() {
         if (nivelActual == 3 || nivelActual == 6 || nivelActual == 9) {
-            for (Enemigo e : enemigos) {
-                if (e != null && e.estaVivo()) {
-                    if (!e.bajo) {
-                        e.setY(e.getY() + 5);
-                        if (e.getY() >= jugador.getY() - e.getAlto()) e.bajo = true;
-                    } else {
-                        e.setY(e.getY() - 5);
-                    }
+            if (enemigos != null)
+                for (Enemigo e : enemigos) {
+                    if (e != null && e.estaVivo()) {
+                        if (!e.bajo) {
+                            e.setY(e.getY() + 5);
+                            if (e.getY() >= jugador.getY() - e.getAlto()) e.bajo = true;
+                        } else {
+                            e.setY(e.getY() - 5);
+                        }
 
-                    // colision jugador
-                    if (jugador.estaVivo() && !jugador.estaInvulnerable() && e.getX() < jugador.getX() + jugador.getAncho() &&
-                        e.getX() + e.getAncho() > jugador.getX() && e.getY() < jugador.getY() + jugador.getAlto() &&
-                        e.getY() + e.getAlto() > jugador.getY()) {
-                        jugador.perderVida();
-                        e.recibirDano(999);
+                        if (jugador.estaVivo() && !jugador.estaInvulnerable() && e.getX() < jugador.getX() + jugador.getAncho() &&
+                            e.getX() + e.getAncho() > jugador.getX() && e.getY() < jugador.getY() + jugador.getAlto() &&
+                            e.getY() + e.getAlto() > jugador.getY()) {
+                            jugador.perderVida();
+                            reproducirSonido("/media/daño.wav");
+                            e.recibirDano(999);
+                        }
                     }
                 }
-            }
 
             boolean olaTerminada = true;
-            for (Enemigo e : enemigos) if (e != null && e.estaVivo()) olaTerminada = false;
+            if (enemigos != null)
+                for (Enemigo e : enemigos) if (e != null && e.estaVivo()) olaTerminada = false;
             if (olaTerminada) avanzarSiguienteOlaKamikaze();
         }
     }
@@ -231,31 +278,15 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
         int x = 0;
         if (numeroOla == 1) x = getWidth() - 50;
         if (numeroOla == 2) x = getWidth()/2 - 25;
-        enemigos = new Enemigo[]{new Enemigo("kamikaze" + (nivelActual/3), x, 50)};
+        enemigos = new Enemigo[]{new Enemigo("kamikaze" + (nivelActual/3 + 1), x, 50, this)};
     }
 
     private void verificarFinNivel() {
         boolean nivelTerminado = true;
-
-        // Revisamos todos los enemigos, incluyendo si están explotando
-        if (enemigos != null) {
-            for (Enemigo e : enemigos) {
-                if (e != null && (e.estaVivo() || e.isExplotando())) {
-                    nivelTerminado = false;
-                    break;
-                }
-            }
-        }
-
-        // Solo avanzamos si ya no hay enemigos ni explosiones en curso
-        if (nivelTerminado) {
-            // Si es nivel 10, no avanzamos (el jefe)
-            if (nivelActual < 10) {
-                avanzarNivel();
-            }
-        }
+        if (enemigos != null)
+            for (Enemigo e : enemigos) if (e != null && (e.estaVivo() || e.isExplotando())) nivelTerminado = false;
+        if (nivelTerminado && nivelActual < 10) avanzarNivel();
     }
-
 
     private void avanzarNivel() {
         nivelActual++;
@@ -268,12 +299,10 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
         cantidadBalasEnemigas = 0;
         jefe = null;
         enemigos = null;
-
-        velocidadMovil = 2 + nivelActual; // Aumenta velocidad con el nivel
+        velocidadMovil = 2 + nivelActual;
 
         switch(nivelActual) {
             case 1,2,4,5,7,8 -> {
-                // enemigos "movil" o "disparo" dependiendo del nivel
                 String tipo;
                 if (nivelActual == 1) tipo = "movil1";
                 else if (nivelActual == 2) tipo = "disparo1";
@@ -282,27 +311,23 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
                 else if (nivelActual == 7) tipo = "movil3";
                 else tipo = "disparo3";
 
-                int filas = 2 + nivelActual/3; // más filas en niveles altos
-                int columnas = 5; // siempre 5 enemigos por fila
+                int filas = 2 + nivelActual/3;
+                int columnas = 5;
                 enemigos = new Enemigo[filas * columnas];
 
                 for (int fila = 0; fila < filas; fila++) {
                     for (int col = 0; col < columnas; col++) {
-                        enemigos[fila * columnas + col] = new Enemigo(tipo, 50 + col * 100, 50 + fila * 60);
+                        enemigos[fila * columnas + col] = new Enemigo(tipo, 50 + col * 100, 50 + fila * 60, this);
                     }
                 }
             }
-            case 3,6,9 -> {
-                olaKamikaze = 0;
-                iniciarOlaKamikaze(0);
-            }
+            case 3,6,9 -> iniciarOlaKamikaze(0);
             case 10 -> {
                 jefe = new Jefe(getWidth()/2 - 60, 50, 30, "/media/jefeFinal.png");
                 enemigos = new Enemigo[0];
             }
         }
     }
-
 
     @Override
     public void keyPressed(KeyEvent e) {

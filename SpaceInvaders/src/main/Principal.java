@@ -19,4 +19,4 @@ public class Principal {
             ventana.setVisible(true);
         });
     }
-}
+}	
