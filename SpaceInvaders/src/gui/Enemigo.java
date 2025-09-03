@@ -35,7 +35,7 @@ public class Enemigo {
         switch(tipo) {
             case "movil1", "movil2", "movil3" -> { ancho = 100; alto = 80; }
             case "disparo1", "disparo2", "disparo3",
-                 "kamikaze1", "kamikaze2", "kamikaze3" -> { ancho = 60; alto = 40; }
+                 "kamikaze1", "kamikaze2", "kamikaze3" -> { ancho = 80; alto = 60; }
         }
 
         String ruta = null;
