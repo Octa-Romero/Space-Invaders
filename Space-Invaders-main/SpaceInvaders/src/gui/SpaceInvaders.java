@@ -12,7 +12,7 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
     private Enemigo[] enemigos;
     private Jefe jefe;
     private Bala[] balas = new Bala[1000];
-    private BalaEnemiga[] balasEnemigas = new BalaEnemiga[50];
+    private BalaEnemiga[] balasEnemigas = new BalaEnemiga[1000];
     private int cantidadBalas = 0, cantidadBalasEnemigas = 0;
 
     private boolean izquierdaPresionada = false, derechaPresionada = false;
@@ -23,6 +23,8 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
     private int puntaje = 0;
     private boolean inicioPantalla = true, gameOver = false, youWin = false;
     private Image fondo;
+    
+    
 
     // Kamikaze
     private int olaKamikaze = 0;
@@ -33,9 +35,14 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
         timer = new Timer(20, this);
         timer.start();
 
-        fondo = new ImageIcon(getClass().getResource("/media/fondito.jpg")).getImage();
+        fondo = new ImageIcon(getClass().getResource("/media/space invaders.png")).getImage();
         jugador = new Jugador(375, 700, "/media/jugador.png");
+    
+       
+        
     }
+    
+    
 
     // ------------------ SONIDO ------------------
     public void reproducirSonido(String ruta) {
@@ -73,6 +80,8 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
             }
         }).start();
     }
+    
+    
     // ---------------------------------------------
 
     @Override
@@ -82,8 +91,6 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
 
         if (inicioPantalla) {
             g.setColor(Color.YELLOW);
-            g.setFont(new Font("Arial", Font.BOLD, 36));
-            g.drawString("SPACE INVADERS", getWidth()/2 - 150, getHeight()/2 - 50);
             g.setFont(new Font("Arial", Font.PLAIN, 24));
             g.drawString("Presione cualquier tecla para jugar", getWidth()/2 - 180, getHeight()/2);
         } else if (gameOver) {
