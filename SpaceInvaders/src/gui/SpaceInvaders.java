@@ -106,7 +106,7 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
 
                 // Controlar volumen
                 FloatControl volumen = (FloatControl) musicaInicio.getControl(FloatControl.Type.MASTER_GAIN);
-                volumen.setValue(-30.0f); // Valor en decibelios, negativo = más bajo, 0 = volumen máximo
+                volumen.setValue(-10.0f); // Valor en decibelios, negativo = más bajo, 0 = volumen máximo
 
                 musicaInicio.loop(Clip.LOOP_CONTINUOUSLY); // bucle infinito
             } catch (Exception e) {
