@@ -8,7 +8,13 @@ public class Enemigo {
     private int ancho = 80, alto = 60;
     private int vidas;
     private boolean vivo = true;
+    public boolean modoKamikaze=false;
+    public boolean alineado = false;
+    public boolean timerKamikazeIniciado = false;
+    public int YKamikaze=20;
     public boolean bajo = false;
+    public int contadorDisparo = 0;
+    public int intervaloDisparo = 50 + (int)(Math.random() * 100);
     private String tipo;
     private Image imagen;
     private Image explosion;

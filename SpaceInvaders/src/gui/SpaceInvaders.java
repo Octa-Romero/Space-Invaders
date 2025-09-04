@@ -18,7 +18,6 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
     private boolean izquierdaPresionada = false, derechaPresionada = false;
     private Timer timer;
     private int velocidadMovil = 3, direccionBloque = 1;
-    private int contadorDisparoEnemigos = 0;
     private int nivelActual = 1;
     private int puntaje = 0;
     private boolean inicioPantalla = true, gameOver = false, youWin = false;
@@ -130,14 +129,19 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
                 g.drawString("Presione cualquier tecla para jugar", getWidth()/2 - 180, getHeight()/2+90);
             }
         } else if (gameOver) {
+        	g.drawImage(fondo, 0, 0, getWidth(), getHeight(), this);
             g.setColor(Color.RED);
             g.setFont(new Font("Arial", Font.BOLD, 48));
             g.drawString("GAME OVER", getWidth()/2 - 150, getHeight()/2 - 50);
-            g.setFont(new Font("Arial", Font.PLAIN, 24));
-            g.drawString("Presione R para reiniciar", getWidth()/2 - 140, getHeight()/2 + 20);
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("Arial", Font.PLAIN, 20));
             g.drawString("Puntaje final: " + puntaje, getWidth()/2 - 100, getHeight()/2 + 60);
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("Arial", Font.PLAIN, 14));
+            g.drawString("Presione R para reiniciar", getWidth()/2 - 140, getHeight()/2 + 20);
         } 
         else if (youWin) {
+        	g.drawImage(fondo, 0, 0, getWidth(), getHeight(), this);
             g.setColor(Color.YELLOW);
             g.setFont(new Font("Arial", Font.BOLD, 48));
             g.drawString("YOU WIN", getWidth()/2 - 120, getHeight()/2);
@@ -156,7 +160,7 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
             for (int i = 0; i < balas.length; i++)
                 if (balas[i] != null) balas[i].dibujar(g);
 
-            for (int i = 0; i < cantidadBalasEnemigas; i++)
+            for (int i = 0; i < balasEnemigas.length; i++)
                 if (balasEnemigas[i] != null) balasEnemigas[i].dibujar(g);
 
             if (enemigos != null)
@@ -194,7 +198,7 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
         } else if (inicioPantalla) {
             // --- Parpadeo del texto arcade ---
             contadorParpadeo++;
-            if (contadorParpadeo > 30) { // cada 30 ciclos (~0.6s si tu Timer es 20ms)
+            if (contadorParpadeo > 30) { // cada 30 ciclos 
                 visible = !visible;
                 contadorParpadeo = 0;
             }
@@ -202,7 +206,7 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
         repaint();
     }
 
-    // ------------------- MOVIMIENTOS -------------------
+    // Movimientos
     private void moverEnemigos() {
         boolean rebote = false;
         if (enemigos != null) {
@@ -226,24 +230,27 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
     }
 
     private void moverBalasEnemigas() {
-        for (int i = 0; i < cantidadBalasEnemigas; i++)
+        for (int i = 0; i < balasEnemigas.length; i++)
             if (balasEnemigas[i] != null && balasEnemigas[i].estaActiva()) balasEnemigas[i].mover();
     }
 
     private void disparoEnemigos() {
-        contadorDisparoEnemigos++;
-        if (contadorDisparoEnemigos >= 50) {
-            if (enemigos != null)
-                for (Enemigo e : enemigos) {
-                    if (e != null && e.estaVivo() && e.getTipo().startsWith("disparo"))
-                        dispararEnemigo(e.getX() + e.getAncho()/2, e.getY() + e.getAlto());
-                }
+        	if (enemigos != null) {
+        	    for (Enemigo e : enemigos) {
+        	        if (e != null && e.estaVivo() && e.getTipo().startsWith("disparo")) {
+        	            e.contadorDisparo++;
+        	            if (e.contadorDisparo >= e.intervaloDisparo) {
+        	                dispararEnemigo(e.getX() + e.getAncho() / 2, e.getY() + e.getAlto());
+        	                e.contadorDisparo = 0;
+        	                e.intervaloDisparo = 50 + (int)(Math.random() * 100); // nuevo intervalo aleatorio
+        	            }
+        	        }
+        	    }
+            
             if (jefe != null && jefe.estaVivo())
                 dispararJefe();
-            contadorDisparoEnemigos = 0;
         }
     }
-    // ----------------------------------------------------
 
     private void dispararJugador() {
         balas[cantidadBalas % balas.length] = 
@@ -253,20 +260,23 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
     }
 
     private void dispararEnemigo(int x, int y) {
-        if (cantidadBalasEnemigas < balasEnemigas.length) {
-            balasEnemigas[cantidadBalasEnemigas++] = new BalaEnemiga(x, y);
+            balasEnemigas[cantidadBalasEnemigas % balasEnemigas.length] = new BalaEnemiga(x, y);
+            cantidadBalasEnemigas++;
             reproducirSonido("/media/disparoEnemigo.wav"); // usa la versión simple
-        }
     }
 
 
     private void dispararJefe() {
         if (jefe != null && jefe.estaVivo()) {
             // Crear la bala del jefe
-            if (cantidadBalasEnemigas < balasEnemigas.length)
-                balasEnemigas[cantidadBalasEnemigas++] = new BalaEnemiga(
-                    jefe.getX() + jefe.getAncho() / 2, jefe.getY() + jefe.getAlto()
+                balasEnemigas[cantidadBalasEnemigas % balasEnemigas.length] = new BalaEnemiga(
+                    jefe.getX() + jefe.getAncho() / 2 - 35, jefe.getY() + jefe.getAlto()
                 );
+                cantidadBalasEnemigas++;
+                balasEnemigas[cantidadBalasEnemigas % balasEnemigas.length] = new BalaEnemiga(
+                        jefe.getX() + jefe.getAncho() / 2 + 35, jefe.getY() + jefe.getAlto()
+                    );
+                cantidadBalasEnemigas++;
 
             // Reproducir sonido específico del jefe
             reproducirSonido("/media/disparo Jefe.wav", 0.0f);
@@ -299,7 +309,7 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
         }
 
         // Balas enemigas
-        for (int i = 0; i < cantidadBalasEnemigas; i++) {
+        for (int i = 0; i < balasEnemigas.length; i++) {
             BalaEnemiga bala = balasEnemigas[i];
             if (bala != null && bala.estaActiva() && jugador.estaVivo() && !jugador.estaInvulnerable() && bala.colisiona(jugador)) {
                 bala.setActiva(false);
@@ -308,7 +318,21 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
             }
         }
 
-        // Verificar si el jugador murió después de colisiones
+        for(Enemigo e : enemigos)
+        {
+        if(e != null && e.estaVivo())
+        if (jugador.estaVivo() && !jugador.estaInvulnerable() &&
+        	    e.getX() < jugador.getX() + jugador.getAncho() &&
+        	    e.getX() + e.getAncho() > jugador.getX() &&
+        	    e.getY() < jugador.getY() + jugador.getAlto() &&
+        	    e.getY() + e.getAlto() > jugador.getY()) {
+
+        	    jugador.perderVida();
+        	    reproducirSonido("/media/daño.wav");
+        }
+        }
+        
+        // Verificar si el jugador murio despues de colisiones
         if (!jugador.estaVivo()) {
             gameOver = true;
         }
@@ -320,42 +344,61 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
             if (enemigos != null) {
                 for (Enemigo e : enemigos) {
                     if (e != null && e.estaVivo()) {
-                        // Movimiento hacia abajo
-                        if (!e.bajo) {
-                            e.setY(e.getY() + 4);
-                            // Cuando llega cerca del jugador, cambia a subir
-                            if (e.getY() >= jugador.getY() - e.getAlto()) e.bajo = true;
-                        } else {
-                            // Movimiento hacia arriba
-                            e.setY(e.getY() - 5);
-                            // Limite superior
-                            if (e.getY() <= 50) e.bajo = false;
+                        
+                        // Si aun no entró en modo kamikaze (después de 3 segundos)
+                    	if (!e.modoKamikaze && !e.timerKamikazeIniciado) {
+                    	    e.timerKamikazeIniciado = true; // evitar múltiples timers
+                    	    Timer inicioKamikaze = new Timer(3000, et -> {
+                    	        e.modoKamikaze = true;
+                    	    });
+                    	    inicioKamikaze.setRepeats(false); // importante: solo se ejecuta una vez
+                    	    inicioKamikaze.start();
+                    	}
+
+                            // Movimiento horizontal (como "movil")
+                            if (!e.alineado && !e.modoKamikaze) {
+                                if (e.getX() + e.getAncho()/2 < jugador.getX() + jugador.getAncho()/2) {
+                                    e.setX(e.getX() + 3); // mueve derecha
+                                } else if (e.getX() + e.getAncho()/2 > jugador.getX() + jugador.getAncho()/2) {
+                                    e.setX(e.getX() - 3); // mueve izquierda
+                                } else {
+                                    e.alineado = true;
+                                }
+                            } else {
+                            // En modo kamikaze: baja en linea recta
+                            e.setY(e.getY() + 6);
+                            if(e.getY() + e.getAlto() >= getHeight())
+                            {
+                            	e.YKamikaze+=40;
+                            	e.setY(e.YKamikaze); 
+                            	e.alineado=false;
+                            	e.modoKamikaze=false;
+                            	e.timerKamikazeIniciado = false;
+                            }
                         }
 
+                        // Colision con jugador
                         if (jugador.estaVivo() && !jugador.estaInvulnerable() &&
-                        	    e.getX() < jugador.getX() + jugador.getAncho() &&
-                        	    e.getX() + e.getAncho() > jugador.getX() &&
-                        	    e.getY() < jugador.getY() + jugador.getAlto() &&
-                        	    e.getY() + e.getAlto() > jugador.getY()) {
+                            e.getX() < jugador.getX() + jugador.getAncho() &&
+                            e.getX() + e.getAncho() > jugador.getX() &&
+                            e.getY() < jugador.getY() + jugador.getAlto() &&
+                            e.getY() + e.getAlto() > jugador.getY()) {
 
-                        	    jugador.perderVida();
-                        	    reproducirSonido("/media/daño.wav");
+                            jugador.perderVida();
+                            reproducirSonido("/media/daño.wav");
 
-                        	    e.setY(0);
-                        	    e.bajo = false;
-
-                        	    // Verificación game over
-                        	    if (!jugador.estaVivo()) {
-                        	        gameOver = true;
-                        	        return; // Sale de moverKamikaze si murió
-                        	    }
-                        	}
-
+                            e.YKamikaze+=40;
+                            e.setY(e.YKamikaze); // Reset y cada vez se acerca mas al jugador
+                            e.bajo = false;
+                            e.modoKamikaze = false;
+                            e.alineado=false;
+                            e.timerKamikazeIniciado = false;
+                        }
                     }
                 }
             }
 
-            // Verifica si la ola terminó
+            // Verifica si la ola termino
             boolean olaTerminada = true;
             if (enemigos != null)
                 for (Enemigo e : enemigos)
@@ -471,7 +514,7 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
             }
         }
         
-        if (gameOver && e.getKeyCode() == KeyEvent.VK_R) {
+        if ((gameOver || youWin) && e.getKeyCode() == KeyEvent.VK_R) {
             puntaje = 0;
             nivelActual = 1;
             jugador.reiniciarVidas();
@@ -480,6 +523,7 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
             inicioPantalla = false; 
             iniciarNivel(); 
         }
+        
     }
 
     @Override
