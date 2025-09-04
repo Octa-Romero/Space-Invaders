@@ -13,12 +13,15 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
     private Jefe jefe;
     private Bala[] balas = new Bala[1000];
     private BalaEnemiga[] balasEnemigas = new BalaEnemiga[50];
-    private int cantidadBalas = 0, cantidadBalasEnemigas = 0;
+    private BalaEnemiga[] balasJefe = new BalaEnemiga[50];
+    private int cantidadBalas = 0, cantidadBalasEnemigas = 0, cantidadBalasJefe=0;
+    private int contadorDisparoJefe = 0;
+    private int intervaloDisparoJefe = 50;
 
     private boolean izquierdaPresionada = false, derechaPresionada = false;
     private Timer timer;
     private int velocidadMovil = 3, direccionBloque = 1;
-    private int nivelActual = 1;
+    private int nivelActual = 10;
     private int puntaje = 0;
     private boolean inicioPantalla = true, gameOver = false, youWin = false;
     private Image fondo;
@@ -162,7 +165,10 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
 
             for (int i = 0; i < balasEnemigas.length; i++)
                 if (balasEnemigas[i] != null) balasEnemigas[i].dibujar(g);
-
+           
+            for (int i = 0; i < balasJefe.length; i++)
+                if (balasJefe[i] != null) balasJefe[i].dibujar(g);
+            
             if (enemigos != null)
                 for (Enemigo e : enemigos) if (e != null) e.dibujar(g);
 
@@ -232,6 +238,9 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
     private void moverBalasEnemigas() {
         for (int i = 0; i < balasEnemigas.length; i++)
             if (balasEnemigas[i] != null && balasEnemigas[i].estaActiva()) balasEnemigas[i].mover();
+        
+        for (int i = 0; i < balasJefe.length; i++)
+            if (balasJefe[i] != null && balasJefe[i].estaActiva()) balasJefe[i].mover();
     }
 
     private void disparoEnemigos() {
@@ -246,10 +255,15 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
         	            }
         	        }
         	    }
-            
-            if (jefe != null && jefe.estaVivo())
-                dispararJefe();
-        }
+        	}
+        	
+        	if (jefe != null && jefe.estaVivo()) {
+        	    contadorDisparoJefe++;
+        	    if (contadorDisparoJefe >= intervaloDisparoJefe) {
+        	        dispararJefe();
+        	        contadorDisparoJefe = 0;
+        	    }
+        	}
     }
 
     private void dispararJugador() {
@@ -269,14 +283,14 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
     private void dispararJefe() {
         if (jefe != null && jefe.estaVivo()) {
             // Crear la bala del jefe
-                balasEnemigas[cantidadBalasEnemigas % balasEnemigas.length] = new BalaEnemiga(
+                balasJefe[cantidadBalasJefe % balasJefe.length] = new BalaEnemiga(
                     jefe.getX() + jefe.getAncho() / 2 - 35, jefe.getY() + jefe.getAlto()
                 );
-                cantidadBalasEnemigas++;
-                balasEnemigas[cantidadBalasEnemigas % balasEnemigas.length] = new BalaEnemiga(
+                cantidadBalasJefe++;
+                balasJefe[cantidadBalasJefe % balasJefe.length] = new BalaEnemiga(
                         jefe.getX() + jefe.getAncho() / 2 + 35, jefe.getY() + jefe.getAlto()
                     );
-                cantidadBalasEnemigas++;
+                cantidadBalasJefe++;
 
             // Reproducir sonido específico del jefe
             reproducirSonido("/media/disparo Jefe.wav", 0.0f);
@@ -340,10 +354,10 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
 
 
     private void moverKamikaze() {
-        if (nivelActual == 3 || nivelActual == 6 || nivelActual == 9) {
+        if (nivelActual == 3 || nivelActual == 6 || nivelActual == 9 || nivelActual == 10) {
             if (enemigos != null) {
                 for (Enemigo e : enemigos) {
-                    if (e != null && e.estaVivo()) {
+                    if (e != null && e.estaVivo() && e.getTipo().startsWith("kamikaze")) {
                         
                         // Si aun no entró en modo kamikaze (después de 3 segundos)
                     	if (!e.modoKamikaze && !e.timerKamikazeIniciado) {
@@ -470,9 +484,10 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
             case 10 -> {
                 // Jefe final en el centro
                 jefe = new Jefe(getWidth()/2 - 60, 50, 30, "/media/jefeFinal.png");
+                iniciarOlaKamikaze(0);
 
                 // enemigos acompañantes (dos filas, 6 en total)
-                int filas = 2;
+                int filas = 3;
                 int columnas = 3;
                 enemigos = new Enemigo[filas * columnas];
 
@@ -480,9 +495,13 @@ public class SpaceInvaders extends JPanel implements ActionListener, KeyListener
                     for (int col = 0; col < columnas; col++) {
                         String tipo;
                         if (fila == 0) {
-                            tipo = "disparo3"; // fila superior dispara
-                        } else {
-                            tipo = "movil3";   // fila inferior solo se mueve
+                        	tipo = "disparo3";// fila superior dispara
+                        } 
+                         else if(fila == 1){
+                        	tipo = "kamikaze3";	// fila inferior solo se mueve
+                        }else
+                        {
+                        	tipo = "movil3";
                         }
                         enemigos[fila * columnas + col] =
                             new Enemigo(tipo, 150 + col * 150, 200 + fila * 80, this);
